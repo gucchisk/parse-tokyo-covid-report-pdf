@@ -9,41 +9,56 @@ https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/index.html の
 """
 
 import argparse
-from pathlib import Path
+import re
 import sys
+import requests
+import datetime
+from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 from urllib.request import urlretrieve
-
-import requests
 from bs4 import BeautifulSoup
+from logging import getLogger, DEBUG, basicConfig
+
+logger = getLogger(__name__)
 
 BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/"
-
 REPORT_PAGE_KEYWORD = "新型コロナウイルスに関連した患者の発生について"
 APPENDIX_SELECTOR = "li.pdf > a"
-
+DATE_FORMAT = '%Y%m%d'
 
 def find_latest_report_page(base_url: str):
     r = requests.get(base_url)
     soup = BeautifulSoup(r.content, "html.parser")
-
     for a in soup.find_all("a"):
         if REPORT_PAGE_KEYWORD in str(a.string):
             return urljoin(base_url, a.get("href"))
     return ""
 
-
-def find_latest_report_pdf(report_page_url: str):
+def find_report_pdf(report_page_url: str):
     r = requests.get(report_page_url)
     soup = BeautifulSoup(r.content, "html.parser")
-
     a = soup.select_one(APPENDIX_SELECTOR)
     return urljoin(report_page_url, a.get("href"))
 
+def find_report_page(base_url: str, date: str):
+    t = tomorrow(date)
+    y = int(t[0:4]) - 2018
+    m = int(t[4:6])
+    d = int(t[6:8])
+    pattern = '令和{0}年{1}月{2}日'.format(y, m, d)
+    r = requests.get(base_url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    for a in soup.find_all("a"):
+        if REPORT_PAGE_KEYWORD in str(a.string):
+            dt = a.find_previous("dt")
+            if (re.search(pattern, dt.string) != None):
+                return urljoin(base_url, a.get("href"))
+    return ""
 
 def fetch_pdf(report_pdf_url: str):
     url_path = urlsplit(report_pdf_url).path
-    filename = Path(url_path).name
+    path = Path(url_path)
+    filename = yesterday(path.stem[0:8]) + path.suffix
     local_path = Path("pdf") / filename
     # ダウンロード済みかをチェック、すでにファイルがあれば何もしない
     if local_path.exists():
@@ -53,31 +68,41 @@ def fetch_pdf(report_pdf_url: str):
     urlretrieve(report_pdf_url, str(local_path))
     return str(local_path)
 
+def yesterday(date: str):
+    today = datetime.datetime.strptime(date, DATE_FORMAT)
+    yesterday = today - datetime.timedelta(days=1)
+    return yesterday.strftime(DATE_FORMAT)
+
+def tomorrow(date: str):
+    today = datetime.datetime.strptime(date, DATE_FORMAT)
+    tomorrow = today + datetime.timedelta(days=1)
+    return tomorrow.strftime(DATE_FORMAT)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    # parser.add_argument('-i', '--int-data', type=int, default=0, help='')
-    # parser.add_argument('-b', '--bool-data', action='store_true', help='')
-    # parser.add_argument('-c', '--counter', type=int, const=50, nargs='?', help='')
-    # parser.add_argument('userid', type=int, help='')
-    # parser.add_argument('filenames', nargs='+', help='')
+    parser.add_argument('-d', '--date', type=str, help='取得したい日付(YYYYmmdd)')
     args = parser.parse_args()
 
-    latest_report_page_url = find_latest_report_page(BASE_URL)
-    if not latest_report_page_url:
-        sys.exit(1)  # まったくないことはないはず
-    # print(latest_report_page_url)
+    if (args.date == None):
+        report_page_url = find_latest_report_page(BASE_URL)
+    else:
+        if (re.match('\d{8}$', args.date) != None):
+            report_page_url = find_report_page(BASE_URL, args.date)
+        else:
+            parser.print_help()
 
-    latest_report_pdf_url = find_latest_report_pdf(latest_report_page_url)
-    if not latest_report_pdf_url:
+    logger.debug(report_page_url)
+    if not report_page_url:
         sys.exit(1)  # まったくないことはないはず
-    # print(latest_report_pdf_url)
 
-    local_pdf_path = fetch_pdf(latest_report_pdf_url)
+    report_pdf_url = find_report_pdf(report_page_url)
+    logger.debug(latest_report_pdf_url)
+    if not report_pdf_url:
+        sys.exit(1)  # まったくないことはないはず
+    local_pdf_path = fetch_pdf(report_pdf_url)
 
     # ダウンロードした場合、ダウンロードしたファイル名を stdout に出す
     print(local_pdf_path)
-
 
 if __name__ == '__main__':
     main()
