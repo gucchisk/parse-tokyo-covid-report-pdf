@@ -96,7 +96,7 @@ def main():
         sys.exit(1)  # まったくないことはないはず
 
     report_pdf_url = find_report_pdf(report_page_url)
-    logger.debug(latest_report_pdf_url)
+    logger.debug(report_pdf_url)
     if not report_pdf_url:
         sys.exit(1)  # まったくないことはないはず
     local_pdf_path = fetch_pdf(report_pdf_url)
