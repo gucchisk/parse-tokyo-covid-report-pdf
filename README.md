@@ -11,9 +11,12 @@ https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/index.html から最
 
 ## Usage
 
+※最初の1回のみ
 ```shell script
-# 最初の1回のみ
 $ pip3 install -r requirements.txt
+```
+or
+```
 $ pipenv install
 ```
 

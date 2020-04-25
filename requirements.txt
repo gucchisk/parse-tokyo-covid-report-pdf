@@ -1,1 +1,3 @@
-pipenv
+requests
+beautifulsoup4
+pdfminer.six

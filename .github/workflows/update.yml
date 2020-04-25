@@ -5,8 +5,8 @@ name: CI
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
-#  push:
-#    branches: [ master ]
+  # push:
+  #   branches: [ master ]
 #  pull_request:
 #    branches: [ master ]
   schedule:
@@ -23,18 +23,22 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-
+    - uses: actions/setup-python@master
+      with:
+        python-version: 3.8
     # Runs a set of commands using the runners shell
     - name: Update 
       run: |
-        pip3 install -r requirements.txt
+        pip3 install setuptools wheel
+        pip3 install pipenv
+        pipenv install
         ./run.sh  || exit $(($? - 255))
-        git config --global user.email "shinji.mtsmt@gmail.com"
-        git config --global user.name "Shinji Matsumoto (cron job)"
+        git config --global user.email "gucchi_sk@yahoo.co.jp"
+        git config --global user.name "github"
         git remote -v
         git status
         git fetch origin
         git checkout master
-        git add pdf/*.pdf csv/*.csv
+        git add pdf/*.pdf csv/*.csv list.txt
         git commit -m 'Update by GitHub Actions'
         git push origin master
