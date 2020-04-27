@@ -7,6 +7,8 @@ https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/index.html の
 """
 
 import argparse
+import re
+import math
 from collections import defaultdict
 
 from pdfminer.converter import PDFPageAggregator
@@ -28,18 +30,38 @@ def main():
     # 指定範囲内の LTTextLine を読み取り
     texts = parse_txt(args.filename)
     first_page_texts = next(texts)
-    tabel_texts = filter(lambda b: TABLE_END_Y1 < b.y1 < TABLE_START_Y1, first_page_texts)
+    table_texts = filter(lambda b: TABLE_END_Y1 < b.y1 < TABLE_START_Y1, first_page_texts)
+
+    start = 0
+    endlabel = 0
+    for table_text in table_texts:
+        if (re.search('千代田', table_text.get_text()) != None):
+            start = math.ceil(table_text.y1)
+            continue
+        if (re.search('新島', table_text.get_text()) != None):
+            endlabel = math.floor(table_text.y1)
+
+    firstnum = 0
+    for table_text in table_texts:
+        if (re.search('\d+', table_text.get_text()) != None):
+            firstnum = math.floor(table_text.y1)
+            break
+    diff = start - firstnum
+    end = endlabel - diff
+
+    table_texts = filter(lambda b: end < b.y1 < start, first_page_texts)
 
     # 読み取った LTTextLine を 行ごとに区分け
     lines = defaultdict(list)
-    for table_text in tabel_texts:
+    for table_text in table_texts:
         t_list = table_text.get_text().strip().split()  # たまに一つの LTTextLine に複数テキストがあるので split
         lines[table_text.y1].extend(t_list)
 
     # 各行で対応する要素を出力
     for k1, k2 in pairs(lines):
         for place, count in zip(lines[k1], lines[k2]):
-            print(f"{place},{count}")
+            if (re.search('^\d+$', count) != None):
+                print(f"{place},{count}")
 
 
 def pairs(iterable, c=2):
