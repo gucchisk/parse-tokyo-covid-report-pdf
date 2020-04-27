@@ -55,7 +55,14 @@ def main():
     lines = defaultdict(list)
     for table_text in table_texts:
         t_list = table_text.get_text().strip().split()  # たまに一つの LTTextLine に複数テキストがあるので split
-        lines[table_text.y1].extend(t_list)
+        new_list = []
+        for t in t_list:
+            if (len(t) > 4):
+                new_list.append(t[0:4])
+                new_list.append(t[4:len(t)])
+            else:
+                new_list.append(t)
+        lines[table_text.y1].extend(new_list)
 
     # 各行で対応する要素を出力
     for k1, k2 in pairs(lines):
