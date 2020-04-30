@@ -17,9 +17,10 @@ from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 from urllib.request import urlretrieve
 from bs4 import BeautifulSoup
-from logging import getLogger, DEBUG, basicConfig
+from logging import getLogger, DEBUG, StreamHandler
 
 logger = getLogger(__name__)
+logger.addHandler(StreamHandler())
 
 BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/"
 REPORT_PAGE_KEYWORD = "新型コロナウイルスに関連した患者の発生について"
@@ -55,10 +56,14 @@ def find_report_page(base_url: str, date: str):
                 return urljoin(base_url, a.get("href"))
     return ""
 
-def fetch_pdf(report_pdf_url: str):
+def fetch_pdf(report_pdf_url: str, datestr=None):
     url_path = urlsplit(report_pdf_url).path
     path = Path(url_path)
-    filename = yesterday(path.stem[0:8]) + path.suffix
+    logger.debug(path)
+    if (datestr == None):
+        filename = yesterday(path.stem[0:8]) + path.suffix
+    else:
+        filename = datestr + ".pdf"
     local_path = Path("pdf") / filename
     # ダウンロード済みかをチェック、すでにファイルがあれば何もしない
     if local_path.exists():
@@ -81,7 +86,11 @@ def tomorrow(date: str):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-d', '--date', type=str, help='取得したい日付(YYYYmmdd)')
+    parser.add_argument('--debug', help='Debugログ', action='store_true')
     args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(DEBUG)
 
     if (args.date == None):
         report_page_url = find_latest_report_page(BASE_URL)
@@ -99,7 +108,7 @@ def main():
     logger.debug(report_pdf_url)
     if not report_pdf_url:
         sys.exit(1)  # まったくないことはないはず
-    local_pdf_path = fetch_pdf(report_pdf_url)
+    local_pdf_path = fetch_pdf(report_pdf_url, args.date)
 
     # ダウンロードした場合、ダウンロードしたファイル名を stdout に出す
     print(local_pdf_path)

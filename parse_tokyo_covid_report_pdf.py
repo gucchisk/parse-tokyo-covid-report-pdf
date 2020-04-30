@@ -15,6 +15,10 @@ from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LAParams, LTContainer, LTTextLine
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer.pdfpage import PDFPage
+from logging import getLogger, DEBUG, StreamHandler
+
+logger = getLogger(__name__)
+logger.addHandler(StreamHandler())
 
 # 区ごとの情報が記載されている箇所の座標情報
 # PDF は左下原点のため、START のほうが Y が大きい。
@@ -25,7 +29,11 @@ TABLE_END_Y1 = 150
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('filename', type=str, help='別紙 PDF のファイル名')
+    parser.add_argument('--debug', help='Debugログ', action='store_true')
     args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(DEBUG)
 
     # 指定範囲内の LTTextLine を読み取り
     texts = parse_txt(args.filename)
@@ -55,14 +63,19 @@ def main():
     lines = defaultdict(list)
     for table_text in table_texts:
         t_list = table_text.get_text().strip().split()  # たまに一つの LTTextLine に複数テキストがあるので split
+        logger.debug(t_list)
         new_list = []
         for t in t_list:
+            if (len(t) > 10):
+                continue
             if (len(t) > 4):
                 new_list.append(t[0:4])
                 new_list.append(t[4:len(t)])
             else:
                 new_list.append(t)
-        lines[table_text.y1].extend(new_list)
+        logger.debug(new_list)
+        if (len(new_list) > 0):
+            lines[table_text.y1].extend(new_list)
 
     # 各行で対応する要素を出力
     for k1, k2 in pairs(lines):
