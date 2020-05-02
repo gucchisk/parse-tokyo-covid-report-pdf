@@ -39,6 +39,6 @@ jobs:
         git status
         git fetch origin
         git checkout master
-        git add pdf/*.pdf csv/*.csv list.txt
+        git add pdf/*.pdf csv/*.csv data/*.csv list.txt
         git commit -m 'Update by GitHub Actions'
         git push origin master
