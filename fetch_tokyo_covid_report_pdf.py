@@ -25,6 +25,7 @@ logger.addHandler(StreamHandler())
 BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/"
 REPORT_PAGE_KEYWORD = "新型コロナウイルスに関連した患者の発生について"
 APPENDIX_SELECTOR = "li.pdf > a"
+RELEASEDATE_SELECTOR = "div.releasedate > p"
 DATE_FORMAT = '%Y%m%d'
 
 def find_latest_report_page(base_url: str):
@@ -39,7 +40,12 @@ def find_report_pdf(report_page_url: str):
     r = requests.get(report_page_url)
     soup = BeautifulSoup(r.content, "html.parser")
     a = soup.select_one(APPENDIX_SELECTOR)
-    return urljoin(report_page_url, a.get("href"))
+
+    p = soup.select_one(RELEASEDATE_SELECTOR)
+    m = re.search(r"令和(\d+)年(\d+)月(\d+)日", p.string)
+    date = '{0}{1:02d}{2:02d}'.format(int(m.group(1)) + 2018, int(m.group(2)), int(m.group(3)))
+    logger.debug('date:' + date)
+    return (urljoin(report_page_url, a.get("href")), date)
 
 def find_report_page(base_url: str, date: str):
     t = tomorrow(date)
@@ -104,11 +110,11 @@ def main():
     if not report_page_url:
         sys.exit(1)  # まったくないことはないはず
 
-    report_pdf_url = find_report_pdf(report_page_url)
+    (report_pdf_url, datestr) = find_report_pdf(report_page_url)
     logger.debug(report_pdf_url)
     if not report_pdf_url:
         sys.exit(1)  # まったくないことはないはず
-    local_pdf_path = fetch_pdf(report_pdf_url, args.date)
+    local_pdf_path = fetch_pdf(report_pdf_url, yesterday(datestr))
 
     # ダウンロードした場合、ダウンロードしたファイル名を stdout に出す
     print(local_pdf_path)
