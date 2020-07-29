@@ -65,7 +65,7 @@ def main():
     lines = defaultdict(list)
     for table_text in table_texts:
         t_list = table_text.get_text().strip().split()  # たまに一つの LTTextLine に複数テキストがあるので split
-        logger.debug(t_list)
+        # logger.debug(t_list)
         new_list = []
         for t in t_list:
             if (len(t) > 10):
@@ -73,6 +73,8 @@ def main():
             if (len(t) > 4):
                 new_list.append(t[0:4])
                 new_list.append(t[4:len(t)])
+            elif (re.match("\(\d+\)", t)):
+                continue
             else:
                 new_list.append(t)
         logger.debug(new_list)
