@@ -82,13 +82,16 @@ def csvlist():
     return files
 
 def create(name: str):
+    logger.debug(name)
     id = ids[name]['id']
     path = 'data/' + id + '.csv'
     with open(path, mode='w') as f:
         for file in csvlist():
             num = get('csv/' + file, name)
             match = re.search('(\d{8})', file)
-            f.write(match.group(1) + ',' + num)
+            date = match.group(1)
+            # logger.debug("date: " + date + " num: " + num)
+            f.write(date + ',' + num)
 
 
 def get(file: str, name: str):

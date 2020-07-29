@@ -70,11 +70,12 @@ def main():
         for t in t_list:
             if (len(t) > 10):
                 continue
+            if (re.match("\(\d*", t)):
+                logger.debug("skip: " + t)
+                continue
             if (len(t) > 4):
                 new_list.append(t[0:4])
                 new_list.append(t[4:len(t)])
-            elif (re.match("\(\d+\)", t)):
-                continue
             else:
                 new_list.append(t)
         logger.debug(new_list)
