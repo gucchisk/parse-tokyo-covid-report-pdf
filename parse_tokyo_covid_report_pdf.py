@@ -22,7 +22,7 @@ logger.addHandler(StreamHandler())
 
 # 区ごとの情報が記載されている箇所の座標情報
 # PDF は左下原点のため、START のほうが Y が大きい。
-TABLE_START_Y1 = 410
+TABLE_START_Y1 = 480
 TABLE_END_Y1 = 150
 
 
@@ -45,11 +45,9 @@ def main():
     for table_text in table_texts:
         if (re.search('千代田', table_text.get_text()) != None):
             start = math.ceil(table_text.y1)
-            logger.debug(start)
             continue
         if (re.search('新島', table_text.get_text()) != None):
             endlabel = math.floor(table_text.y1)
-            logger.debug(endlabel)
 
     firstnum = 0
     for table_text in table_texts:
@@ -58,6 +56,7 @@ def main():
             break
     diff = start - firstnum
     end = endlabel - diff
+    logger.debug(f"start: {start}, end: {end}")
 
     table_texts = filter(lambda b: end < b.y1 < start, first_page_texts)
 
