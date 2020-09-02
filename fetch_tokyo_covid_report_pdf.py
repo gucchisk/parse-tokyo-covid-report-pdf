@@ -22,18 +22,19 @@ from logging import getLogger, DEBUG, StreamHandler
 logger = getLogger(__name__)
 logger.addHandler(StreamHandler())
 
-BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1007261/"
+BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1010035/"
 REPORT_PAGE_KEYWORD = "新型コロナウイルスに関連した患者の発生について"
 APPENDIX_SELECTOR = "li.pdf > a"
 RELEASEDATE_SELECTOR = "div.releasedate > p"
 DATE_FORMAT = '%Y%m%d'
 
-def find_latest_report_page(base_url: str):
-    r = requests.get(base_url)
+def find_latest_report_page():
+    logger.debug(f"find latest")
+    r = requests.get(BASE_URL)
     soup = BeautifulSoup(r.content, "html.parser")
     for a in soup.find_all("a"):
         if REPORT_PAGE_KEYWORD in str(a.string):
-            return urljoin(base_url, a.get("href"))
+            return urljoin(BASE_URL, a.get("href"))
     return ""
 
 def find_report_pdf(report_page_url: str):
@@ -47,19 +48,40 @@ def find_report_pdf(report_page_url: str):
     logger.debug('date:' + date)
     return (urljoin(report_page_url, a.get("href")), date)
 
-def find_report_page(base_url: str, date: str):
+def find_report_page(date: str):
+    logger.debug(f"find {date}")
     t = tomorrow(date)
     y = int(t[0:4]) - 2018
     m = int(t[4:6])
     d = int(t[6:8])
     pattern = '令和{0}年{1}月{2}日'.format(y, m, d)
-    r = requests.get(base_url)
+    r = requests.get(BASE_URL)
     soup = BeautifulSoup(r.content, "html.parser")
     for a in soup.find_all("a"):
         if REPORT_PAGE_KEYWORD in str(a.string):
             dt = a.find_previous("dt")
             if (re.search(pattern, dt.string) != None):
-                return urljoin(base_url, a.get("href"))
+                return urljoin(BASE_URL, a.get("href"))
+    return ""
+
+def find_report_page_from(url: str, date: str):
+    logger.debug(f"find date: {date} from {url}")
+    t = tomorrow(date)
+    y = int(t[0:4]) - 2018
+    m = int(t[4:6])
+    d = int(t[6:8])
+    pattern = '令和{0}年{1}月{2}日'.format(y, m, d)
+    parent = parent_url(url)
+    logger.debug(parent)
+    r = requests.get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    for a in soup.find_all("a"):
+        if REPORT_PAGE_KEYWORD in str(a.string):
+            url = parent + "/" + a.get("href")
+            r = requests.get(url)
+            s = BeautifulSoup(r.content, 'html.parser')
+            if (re.search(pattern, s.select_one('.releasedate>p').text) != None):
+                return url
     return ""
 
 def fetch_pdf(report_pdf_url: str, datestr=None):
@@ -79,6 +101,11 @@ def fetch_pdf(report_pdf_url: str, datestr=None):
     urlretrieve(report_pdf_url, str(local_path))
     return str(local_path)
 
+def parent_url(urlstr: str):
+    url = urlsplit(urlstr)
+    parent_path = Path(url.path).parents[0]
+    return url.scheme + "://" + url.hostname + str(parent_path)
+
 def yesterday(date: str):
     today = datetime.datetime.strptime(date, DATE_FORMAT)
     yesterday = today - datetime.timedelta(days=1)
@@ -93,16 +120,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-d', '--date', type=str, help='取得したい日付(YYYYmmdd)')
     parser.add_argument('--debug', help='Debugログ', action='store_true')
+    parser.add_argument('-u', '--url', type=str, help='URL')
     args = parser.parse_args()
 
     if args.debug:
         logger.setLevel(DEBUG)
 
     if (args.date == None):
-        report_page_url = find_latest_report_page(BASE_URL)
+        report_page_url = find_latest_report_page()
     else:
         if (re.match('\d{8}$', args.date) != None):
-            report_page_url = find_report_page(BASE_URL, args.date)
+            if (args.url == None):
+                report_page_url = find_report_page(args.date)
+            else:
+                report_page_url = find_report_page_from(args.url, args.date)
         else:
             parser.print_help()
 
