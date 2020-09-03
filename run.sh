@@ -3,6 +3,11 @@
 # PDF をとってくる
 echo "pipenv run ./fetch_tokyo_covid_report_pdf.py"
 NEW_PDF_FILE=$(pipenv run ./fetch_tokyo_covid_report_pdf.py)
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    exit $STATUS
+fi
 if [[ -z "${NEW_PDF_FILE}" ]] ;then
   echo "No new PDF. exited"
   exit 255
