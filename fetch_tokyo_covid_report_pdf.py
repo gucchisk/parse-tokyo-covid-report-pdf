@@ -23,17 +23,18 @@ logger = getLogger(__name__)
 logger.addHandler(StreamHandler())
 
 BASE_URL = "https://www.bousai.metro.tokyo.lg.jp/taisaku/saigai/1010035/"
+LATEST_REPORT_LIST_KEYWORD = "最新の本部報"
 REPORT_PAGE_KEYWORD = "新型コロナウイルスに関連した患者の発生について"
 APPENDIX_SELECTOR = "li.pdf > a"
 RELEASEDATE_SELECTOR = "div.releasedate > p"
 DATE_FORMAT = '%Y%m%d'
 
-def find_latest_report_page():
+def find_latest_report_list_page():
     logger.debug(f"find latest")
     r = requests.get(BASE_URL)
     soup = BeautifulSoup(r.content, "html.parser")
     for a in soup.find_all("a"):
-        if REPORT_PAGE_KEYWORD in str(a.string):
+        if LATEST_REPORT_LIST_KEYWORD in str(a.string):
             return urljoin(BASE_URL, a.get("href"))
     return ""
 
@@ -48,23 +49,32 @@ def find_report_pdf(report_page_url: str):
     logger.debug('date:' + date)
     return (urljoin(report_page_url, a.get("href")), date)
 
-def find_report_page(date: str):
-    logger.debug(f"find {date}")
-    t = tomorrow(date)
-    y = int(t[0:4]) - 2018
-    m = int(t[4:6])
-    d = int(t[6:8])
-    pattern = '令和{0}年{1}月{2}日'.format(y, m, d)
-    r = requests.get(BASE_URL)
+# def find_report_page(date: str):
+#     logger.debug(f"find {date}")
+#     t = tomorrow(date)
+#     y = int(t[0:4]) - 2018
+#     m = int(t[4:6])
+#     d = int(t[6:8])
+#     pattern = '令和{0}年{1}月{2}日'.format(y, m, d)
+#     r = requests.get(BASE_URL)
+#     soup = BeautifulSoup(r.content, "html.parser")
+#     for a in soup.find_all("a"):
+#         if REPORT_PAGE_KEYWORD in str(a.string):
+#             dt = a.find_previous("dt")
+#             if (re.search(pattern, dt.string) != None):
+#                 return urljoin(BASE_URL, a.get("href"))
+#     return ""
+
+def find_latest_report_page(url: str):
+    logger.debug(f"find latest from {url}")
+    r = requests.get(url)
     soup = BeautifulSoup(r.content, "html.parser")
     for a in soup.find_all("a"):
         if REPORT_PAGE_KEYWORD in str(a.string):
-            dt = a.find_previous("dt")
-            if (re.search(pattern, dt.string) != None):
-                return urljoin(BASE_URL, a.get("href"))
+            return urljoin(BASE_URL, a.get("href"))
     return ""
 
-def find_report_page_from(url: str, date: str):
+def find_report_page(url: str, date: str):
     logger.debug(f"find date: {date} from {url}")
     t = tomorrow(date)
     y = int(t[0:4]) - 2018
@@ -79,8 +89,10 @@ def find_report_page_from(url: str, date: str):
         if REPORT_PAGE_KEYWORD in str(a.string):
             url = parent + "/" + a.get("href")
             r = requests.get(url)
+            logger.debug(f"check {url}")
             s = BeautifulSoup(r.content, 'html.parser')
             if (re.search(pattern, s.select_one('.releasedate>p').text) != None):
+                logger.debug(f"found: {date} report")
                 return url
     return ""
 
@@ -126,18 +138,22 @@ def main():
     if args.debug:
         logger.setLevel(DEBUG)
 
+    if (args.url == None):
+        report_list_url = find_latest_report_list_page()
+    else:
+        report_list_url = args.url
+
+    logger.debug(f"list: {report_list_url}")
+        
     if (args.date == None):
-        report_page_url = find_latest_report_page()
+        report_page_url = find_latest_report_page(report_list_url)
     else:
         if (re.match('\d{8}$', args.date) != None):
-            if (args.url == None):
-                report_page_url = find_report_page(args.date)
-            else:
-                report_page_url = find_report_page_from(args.url, args.date)
+            report_page_url = find_report_page(report_list_url, args.date)
         else:
             parser.print_help()
 
-    logger.debug(report_page_url)
+    logger.debug(f"report: {report_page_url}")
     if not report_page_url:
         sys.exit(1)  # まったくないことはないはず
 
