@@ -10,7 +10,7 @@ on:
 #  pull_request:
 #    branches: [ master ]
   schedule:
-    - cron: "0 11-16 * * *"  # 20:00 - 01:00 JST
+    - cron: "0 11-17 * * *"  # 20:00 - 02:00 JST
   workflow_dispatch:
     branches: [ master ]
 
