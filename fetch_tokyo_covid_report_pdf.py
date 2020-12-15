@@ -29,6 +29,7 @@ APPENDIX_SELECTOR = "li.pdf > a"
 RELEASEDATE_SELECTOR = "div.releasedate > p"
 DATE_FORMAT = '%Y%m%d'
 
+# 最新の本部報のURLを取得
 def find_latest_report_list_page():
     logger.debug(f"find latest")
     r = requests.get(BASE_URL)
@@ -38,6 +39,7 @@ def find_latest_report_list_page():
             return urljoin(BASE_URL, a.get("href"))
     return ""
 
+# PDFのURLを取得
 def find_report_pdf(report_page_url: str):
     r = requests.get(report_page_url)
     soup = BeautifulSoup(r.content, "html.parser")
@@ -65,6 +67,7 @@ def find_report_pdf(report_page_url: str):
 #                 return urljoin(BASE_URL, a.get("href"))
 #     return ""
 
+# 本部報リスト(url)から最新の患者の発生についてのページのURLを取得
 def find_latest_report_page(url: str):
     logger.debug(f"find latest from {url}")
     r = requests.get(url)
@@ -74,6 +77,7 @@ def find_latest_report_page(url: str):
             return urljoin(BASE_URL, a.get("href"))
     return ""
 
+# 本部報リスト(url)から指定された日付の患者の発生についてのページのURLを取得
 def find_report_page(url: str, date: str):
     logger.debug(f"find date: {date} from {url}")
     t = tomorrow(date)
@@ -96,6 +100,7 @@ def find_report_page(url: str, date: str):
                 return url
     return ""
 
+# PDFを取得
 def fetch_pdf(report_pdf_url: str, datestr=None):
     url_path = urlsplit(report_pdf_url).path
     path = Path(url_path)
